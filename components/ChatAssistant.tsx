@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Loader2, MessageSquare } from 'lucide-react';
-import { sendMessageStream, resetChat } from '../services/geminiService';
+import { X, Send, Bot, Loader2, MessageSquare, ShoppingCart } from 'lucide-react';
+import { sendMessageStream, sendToolResponseStream } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatAssistantProps {
   isOpen: boolean;
   onClose: () => void;
   onOpen: () => void;
+  onAddToCart: (productId: string) => boolean;
 }
 
 interface Message {
@@ -14,7 +15,7 @@ interface Message {
   text: string;
 }
 
-export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, onOpen }) => {
+export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, onOpen, onAddToCart }) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', text: 'Olá! 👋 Sou o assistente virtual da OL Print. Como posso ajudar com a sua impressora hoje?' }
   ]);
@@ -38,25 +39,90 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsLoading(true);
 
+    // Placeholder for streaming response
+    setMessages(prev => [...prev, { role: 'model', text: '' }]);
+
     try {
-      // Create a placeholder for the streaming response
-      setMessages(prev => [...prev, { role: 'model', text: '' }]);
-      
-      const result = await sendMessageStream(userMessage);
-      
+      let result = await sendMessageStream(userMessage);
       let fullText = '';
-      
+      let functionCallData: { name: string, args: any, id: string } | null = null;
+
+      // --- First Pass: User text -> Model (Text or Tool Call) ---
       for await (const chunk of result) {
         const chunkText = chunk.text;
-        fullText += chunkText;
-        
-        // Update the last message with the accumulated text
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].text = fullText;
-          return newMessages;
-        });
+        if (chunkText) {
+          fullText += chunkText;
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].text = fullText;
+            return newMessages;
+          });
+        }
+
+        // Check for Function Calls (Tools)
+        const calls = chunk.functionCalls;
+        if (calls && calls.length > 0) {
+          const call = calls[0];
+          functionCallData = { name: call.name, args: call.args, id: call.id || '' };
+          console.log("AI wants to call tool:", functionCallData);
+        }
       }
+
+      // --- Handle Function Call if needed ---
+      if (functionCallData && functionCallData.name === 'addToCart') {
+         const { productId } = functionCallData.args;
+         
+         // Execute action locally
+         const success = onAddToCart(productId);
+         const toolResult = success ? "Produto adicionado com sucesso." : "Produto não encontrado.";
+
+         // Show a small indicator in chat (optional, but good UX)
+         setMessages(prev => {
+             const newMessages = [...prev];
+             newMessages[newMessages.length - 1].text += `\n\n*Adicionando produto ao carrinho...*`;
+             return newMessages;
+         });
+
+         // Send Tool Response back to Model to get final text confirmation
+         const functionResponse = [
+             {
+                 name: 'addToCart',
+                 response: { result: toolResult },
+                 id: functionCallData.id
+             }
+         ];
+
+         result = await sendToolResponseStream(functionResponse);
+
+         // --- Second Pass: Tool Response -> Model Text Confirmation ---
+         let confirmationText = '';
+         // Reset the last message or append? Let's replace the "Adicionando..." text or just append.
+         // Better: Clear the temporary loading text and stream the new response.
+         
+         // Clearing the "Adicionando..." text for cleaner UI, or just let the model text flow
+         setMessages(prev => {
+            const newMessages = [...prev];
+            // Remove the italic status text before streaming real response
+            newMessages[newMessages.length - 1].text = fullText; 
+            return newMessages;
+         });
+
+         for await (const chunk of result) {
+             const chunkText = chunk.text;
+             if (chunkText) {
+                 confirmationText += chunkText;
+                 setMessages(prev => {
+                     const newMessages = [...prev];
+                     // Append to existing text or replace? usually replace if it was a pure tool call turn
+                     // But sometimes model talks BEFORE tool. 
+                     // Simple strategy: Append the confirmation.
+                     newMessages[newMessages.length - 1].text = fullText + (fullText ? '\n\n' : '') + confirmationText;
+                     return newMessages;
+                 });
+             }
+         }
+      }
+
     } catch (error) {
       console.error("Error calling Gemini:", error);
       setMessages(prev => [...prev, { role: 'model', text: 'Desculpe, tive um problema técnico. Por favor tente novamente.' }]);
@@ -86,7 +152,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 w-[90vw] max-w-[380px] h-[500px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-300">
+    <div className="fixed bottom-6 right-6 z-40 w-[90vw] max-w-[380px] h-[500px] max-h-[80vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-300">
       {/* Header */}
       <div className="bg-blue-600 p-4 flex items-center justify-between text-white">
         <div className="flex items-center gap-2">
@@ -107,7 +173,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-950 space-y-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -117,16 +183,16 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
               className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
                 msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-br-none'
-                  : 'bg-white text-slate-800 rounded-bl-none border border-slate-200'
+                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-200 dark:border-slate-700'
               }`}
             >
               {msg.role === 'model' ? (
                   <ReactMarkdown 
-                    className="prose prose-sm max-w-none prose-p:leading-snug prose-pre:bg-slate-100 prose-pre:text-xs"
+                    className="prose prose-sm max-w-none prose-p:leading-snug prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900 prose-pre:text-xs dark:prose-invert"
                     components={{
                         ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-1 mt-2" {...props} />,
-                        li: ({node, ...props}) => <li className="text-slate-700" {...props} />,
-                        strong: ({node, ...props}) => <strong className="font-bold text-slate-900" {...props} />
+                        li: ({node, ...props}) => <li className="text-slate-700 dark:text-slate-300" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />
                     }}
                   >
                     {msg.text}
@@ -139,7 +205,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
         ))}
         {isLoading && messages[messages.length - 1].role === 'user' && (
            <div className="flex justify-start">
-             <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
+             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
              </div>
            </div>
@@ -148,15 +214,15 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
       </div>
 
       {/* Input */}
-      <div className="p-4 bg-white border-t border-slate-100">
+      <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pergunte sobre tinteiros..."
-            className="flex-1 px-4 py-2 bg-slate-100 border-transparent focus:border-blue-500 focus:bg-white border rounded-full text-sm outline-none transition-all"
+            placeholder="Pergunte ou diga 'adicionar ao carrinho'..."
+            className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 border rounded-full text-sm outline-none transition-all dark:text-white"
             disabled={isLoading}
           />
           <button

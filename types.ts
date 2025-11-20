@@ -27,4 +27,4 @@ export interface ChatMessage {
   isError?: boolean;
 }
 
-export type ViewState = 'home' | 'products' | 'about' | 'promotions';
+export type ViewState = 'home' | 'products' | 'about' | 'promotions' | 'admin' | 'design-studio' | 'profile' | 'support';

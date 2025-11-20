@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, Printer, MessageSquare, Menu, X, Flame } from 'lucide-react';
+import { ShoppingCart, Printer, MessageSquare, Menu, X, Flame, Palette, User } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HeaderProps {
@@ -20,10 +20,10 @@ export const Header: React.FC<HeaderProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const navClasses = (view: ViewState) => 
-    `cursor-pointer hover:text-blue-600 transition-colors ${currentView === view ? 'text-blue-600 font-semibold' : 'text-slate-600'}`;
+    `cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${currentView === view ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-300'}`;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="bg-blue-600 p-2 rounded-lg">
               <Printer className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-blue-500 dark:from-blue-500 dark:to-blue-400 bg-clip-text text-transparent">
               OL Print
             </span>
           </div>
@@ -45,10 +45,17 @@ export const Header: React.FC<HeaderProps> = ({
             <button onClick={() => setCurrentView('products')} className={navClasses('products')}>Loja Online</button>
             <button 
               onClick={() => setCurrentView('promotions')} 
-              className={`flex items-center gap-1 cursor-pointer hover:text-red-600 transition-colors ${currentView === 'promotions' ? 'text-red-600 font-bold' : 'text-slate-600'}`}
+              className={`flex items-center gap-1 cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors ${currentView === 'promotions' ? 'text-red-600 dark:text-red-400 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
             >
               <Flame className="h-4 w-4" />
               Promoções
+            </button>
+            <button 
+              onClick={() => setCurrentView('design-studio')} 
+              className={`flex items-center gap-1 cursor-pointer hover:text-pink-600 dark:hover:text-pink-400 transition-colors ${currentView === 'design-studio' ? 'text-pink-600 dark:text-pink-400 font-bold' : 'text-slate-600 dark:text-slate-300'}`}
+            >
+              <Palette className="h-4 w-4" />
+              Estúdio Criativo
             </button>
             <button onClick={() => setCurrentView('about')} className={navClasses('about')}>Sobre Nós</button>
           </nav>
@@ -57,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleChat}
-              className="hidden md:flex items-center gap-2 text-slate-600 hover:text-blue-600 transition-colors"
+              className="hidden md:flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               <MessageSquare className="h-5 w-5" />
               <span className="text-sm font-medium">Assistente</span>
@@ -65,9 +72,9 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button 
               onClick={toggleCart}
-              className="relative p-2 hover:bg-slate-100 rounded-full transition-colors group"
+              className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group"
             >
-              <ShoppingCart className="h-6 w-6 text-slate-600 group-hover:text-blue-600" />
+              <ShoppingCart className="h-6 w-6 text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce-short">
                   {cartCount}
@@ -75,8 +82,16 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
+            <button
+              onClick={() => setCurrentView('profile')}
+              className={`p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors ${currentView === 'profile' ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}
+              title="O Meu Perfil"
+            >
+               <User className="h-6 w-6" />
+            </button>
+
             <button 
-              className="md:hidden p-2 text-slate-600"
+              className="md:hidden p-2 text-slate-600 dark:text-slate-300"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X /> : <Menu />}
@@ -87,36 +102,50 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-100 bg-white">
+        <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <button 
               onClick={() => { setCurrentView('home'); setIsMobileMenuOpen(false); }}
-              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 w-full text-left"
+              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
             >
               Início
             </button>
             <button 
               onClick={() => { setCurrentView('products'); setIsMobileMenuOpen(false); }}
-              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 w-full text-left"
+              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
             >
               Loja Online
             </button>
             <button 
               onClick={() => { setCurrentView('promotions'); setIsMobileMenuOpen(false); }}
-              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 w-full text-left"
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full text-left"
             >
               <Flame className="h-4 w-4" />
               Promoções
             </button>
+             <button 
+              onClick={() => { setCurrentView('design-studio'); setIsMobileMenuOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 w-full text-left"
+            >
+              <Palette className="h-4 w-4" />
+              Estúdio Criativo
+            </button>
+            <button 
+              onClick={() => { setCurrentView('profile'); setIsMobileMenuOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
+            >
+              <User className="h-4 w-4" />
+              O Meu Perfil
+            </button>
             <button 
               onClick={() => { setCurrentView('about'); setIsMobileMenuOpen(false); }}
-              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 w-full text-left"
+              className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 hover:bg-slate-50 dark:hover:bg-slate-800 w-full text-left"
             >
               Sobre Nós
             </button>
             <button 
               onClick={() => { toggleChat(); setIsMobileMenuOpen(false); }}
-              className="block px-3 py-2 rounded-md text-base font-medium text-blue-600 bg-blue-50 w-full text-left mt-2"
+              className="block px-3 py-2 rounded-md text-base font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 w-full text-left mt-2"
             >
               Falar com Assistente AI
             </button>
