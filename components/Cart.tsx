@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Trash2, Plus, Minus, CreditCard } from 'lucide-react';
 import { CartItem } from '../types';
@@ -16,17 +17,17 @@ export const Cart: React.FC<CartProps> = ({ isOpen, onClose, items, onUpdateQuan
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} aria-hidden="true" />
       
       <div className="absolute inset-y-0 right-0 max-w-full flex">
         <div className="w-screen max-w-md transform transition ease-in-out duration-500 sm:duration-700 bg-white shadow-2xl flex flex-col h-full">
           
           {/* Header */}
           <div className="px-4 py-6 bg-slate-50 border-b border-slate-200 sm:px-6 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-slate-900">O seu carrinho</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-500">
-              <X className="h-6 w-6" />
+            <h2 id="cart-title" className="text-lg font-medium text-slate-900">O seu carrinho</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-500" aria-label="Fechar carrinho">
+              <X className="h-6 w-6" aria-hidden="true" />
             </button>
           </div>
 
@@ -34,7 +35,7 @@ export const Cart: React.FC<CartProps> = ({ isOpen, onClose, items, onUpdateQuan
           <div className="flex-1 py-6 overflow-y-auto px-4 sm:px-6">
             {items.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4" aria-hidden="true">
                   <CreditCard className="h-8 w-8 text-slate-400" />
                 </div>
                 <p className="text-lg font-medium">O carrinho está vazio</p>
@@ -67,20 +68,22 @@ export const Cart: React.FC<CartProps> = ({ isOpen, onClose, items, onUpdateQuan
                         <p className="mt-1 text-sm text-slate-500">{item.category}</p>
                       </div>
                       <div className="flex flex-1 items-end justify-between text-sm">
-                        <div className="flex items-center border rounded-md">
+                        <div className="flex items-center border rounded-md" role="group" aria-label="Quantidade do produto">
                           <button 
                             onClick={() => onUpdateQuantity(item.id, -1)}
                             className="p-1 hover:bg-slate-100 text-slate-600"
                             disabled={item.quantity <= 1}
+                            aria-label="Diminuir quantidade"
                           >
-                            <Minus className="h-4 w-4" />
+                            <Minus className="h-4 w-4" aria-hidden="true" />
                           </button>
-                          <span className="px-2 font-medium">{item.quantity}</span>
+                          <span className="px-2 font-medium" aria-label={`Quantidade: ${item.quantity}`}>{item.quantity}</span>
                           <button 
                             onClick={() => onUpdateQuantity(item.id, 1)}
                             className="p-1 hover:bg-slate-100 text-slate-600"
+                            aria-label="Aumentar quantidade"
                           >
-                            <Plus className="h-4 w-4" />
+                            <Plus className="h-4 w-4" aria-hidden="true" />
                           </button>
                         </div>
 
@@ -88,8 +91,9 @@ export const Cart: React.FC<CartProps> = ({ isOpen, onClose, items, onUpdateQuan
                           type="button"
                           onClick={() => onRemove(item.id)}
                           className="font-medium text-red-500 hover:text-red-600 flex items-center gap-1"
+                          aria-label={`Remover ${item.name} do carrinho`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                           <span className="hidden sm:inline">Remover</span>
                         </button>
                       </div>

@@ -1,5 +1,6 @@
-import React from 'react';
-import { User, Moon, Sun, Bell, Shield, LogOut, Mail, Save } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import { User, Moon, Sun, Bell, Shield, LogOut, Mail, Save, Globe, CheckCircle, Loader2 } from 'lucide-react';
 
 interface ProfileSettingsProps {
   darkMode: boolean;
@@ -7,9 +8,37 @@ interface ProfileSettingsProps {
 }
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ darkMode, toggleDarkMode }) => {
-  const [name, setName] = React.useState('Utilizador OL Print');
-  const [email, setEmail] = React.useState('cliente@exemplo.com');
-  const [notifications, setNotifications] = React.useState(true);
+  // Initialize state from localStorage
+  const [name, setName] = useState(() => localStorage.getItem('profile_name') || 'Utilizador OL Print');
+  const [email, setEmail] = useState(() => localStorage.getItem('profile_email') || 'cliente@exemplo.com');
+  const [notifications, setNotifications] = useState(() => localStorage.getItem('profile_notif') !== 'false'); // Default true
+  const [language, setLanguage] = useState(() => localStorage.getItem('profile_lang') || 'pt');
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Update HTML lang attribute when language changes (instant preview) or on load
+  useEffect(() => {
+    document.documentElement.lang = language === 'pt' ? 'pt-PT' : language;
+  }, [language]);
+
+  const handleSave = () => {
+    setIsSaving(true);
+    
+    // Simulate API call delay for UX
+    setTimeout(() => {
+      localStorage.setItem('profile_name', name);
+      localStorage.setItem('profile_email', email);
+      localStorage.setItem('profile_notif', String(notifications));
+      localStorage.setItem('profile_lang', language);
+      
+      setIsSaving(false);
+      setShowSuccess(true);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => setShowSuccess(false), 3000);
+    }, 800);
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -22,7 +51,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ darkMode, togg
         {/* Header Profile */}
         <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-6">
           <div className="w-24 h-24 bg-gradient-to-tr from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-3xl font-bold text-white">{name.charAt(0)}</span>
+            <span className="text-3xl font-bold text-white">{name.charAt(0).toUpperCase()}</span>
           </div>
           <div className="text-center sm:text-left">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">{name}</h2>
@@ -88,6 +117,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ darkMode, togg
               <button 
                 onClick={toggleDarkMode}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${darkMode ? 'bg-blue-600' : 'bg-slate-200'}`}
+                aria-label={darkMode ? 'Desativar modo escuro' : 'Ativar modo escuro'}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
@@ -96,16 +126,50 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ darkMode, togg
 
           <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
-          {/* Notifications (Dummy) */}
+          {/* Language */}
+          <section>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <Globe className="h-5 w-5 text-blue-500" /> Idioma
+            </h3>
+            
+            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Linguagem do Site</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Selecione o idioma preferido para a interface.
+                </p>
+              </div>
+              
+              <select 
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none cursor-pointer"
+                aria-label="Selecionar idioma"
+              >
+                <option value="pt">Português (PT)</option>
+                <option value="en">English (EN)</option>
+                <option value="es">Español (ES)</option>
+                <option value="fr">Français (FR)</option>
+              </select>
+            </div>
+          </section>
+
+          <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+          {/* Notifications */}
           <section>
              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Bell className="h-5 w-5 text-purple-500" /> Notificações
             </h3>
-             <div className="flex items-center justify-between">
-                <p className="text-slate-700 dark:text-slate-300">Receber promoções e novidades por email</p>
+             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                <div>
+                   <p className="font-medium text-slate-900 dark:text-white">Marketing e Novidades</p>
+                   <p className="text-sm text-slate-500 dark:text-slate-300">Receber promoções e novidades por email</p>
+                </div>
                 <button 
                   onClick={() => setNotifications(!notifications)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 ${notifications ? 'bg-green-500' : 'bg-slate-200'}`}
+                  aria-label={notifications ? 'Desativar notificações' : 'Ativar notificações'}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${notifications ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -117,9 +181,26 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ darkMode, togg
                 <LogOut className="h-4 w-4" />
                 Terminar Sessão
              </button>
-             <button className="px-6 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
-                <Save className="h-4 w-4" />
-                Guardar Alterações
+             <button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`px-6 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 min-w-[160px] ${
+                  showSuccess 
+                    ? 'bg-green-600 text-white shadow-green-500/25' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25'
+                }`}
+             >
+                {showSuccess ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Guardado!
+                  </>
+                ) : (
+                  <>
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isSaving ? 'A guardar...' : 'Guardar Alterações'}
+                  </>
+                )}
              </button>
           </div>
         </div>
@@ -127,3 +208,4 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ darkMode, togg
     </div>
   );
 };
+    

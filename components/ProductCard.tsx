@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Star, ShoppingCart, Check } from 'lucide-react';
 import { Product } from '../types';
@@ -35,19 +36,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             {product.category}
           </div>
           {product.originalPrice && (
-            <div className="bg-red-600 text-white px-2 py-1 rounded-md text-xs font-bold shadow-sm animate-pulse">
+            <div 
+              className="bg-red-600 text-white px-2 py-1 rounded-md text-xs font-bold shadow-sm animate-pulse"
+              aria-label={`Desconto de ${discountPercentage}%`}
+            >
               -{discountPercentage}%
             </div>
           )}
         </div>
 
         {/* Overlay effect for hover */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500"></div>
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500" aria-hidden="true"></div>
       </div>
 
       <div className="p-5 flex flex-col flex-1">
-        <div className="flex items-center gap-1 mb-2">
-          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+        <div className="flex items-center gap-1 mb-2" aria-label={`Avaliação: ${product.rating} de 5 estrelas em ${product.reviews} avaliações`}>
+          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" aria-hidden="true" />
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{product.rating}</span>
           <span className="text-xs text-slate-400 dark:text-slate-500">({product.reviews})</span>
         </div>
@@ -63,11 +67,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex flex-col">
             {product.originalPrice && (
-              <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
+              <span 
+                className="text-xs text-slate-400 dark:text-slate-500 line-through"
+                aria-label={`Preço original: ${product.originalPrice.toFixed(2)} euros`}
+              >
                 €{product.originalPrice.toFixed(2)}
               </span>
             )}
-            <span className={`text-xl font-bold ${product.originalPrice ? 'text-red-600 dark:text-red-500' : 'text-slate-900 dark:text-white'}`}>
+            <span 
+              className={`text-xl font-bold ${product.originalPrice ? 'text-red-600 dark:text-red-500' : 'text-slate-900 dark:text-white'}`}
+              aria-label={`Preço atual: ${product.price.toFixed(2)} euros`}
+            >
               €{product.price.toFixed(2)}
             </span>
           </div>
@@ -75,6 +85,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           <button
             onClick={handleAdd}
             disabled={isAdded}
+            aria-label={isAdded ? "Produto adicionado ao carrinho" : `Adicionar ${product.name} ao carrinho`}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
               isAdded 
                 ? 'bg-green-500 text-white' 
@@ -83,12 +94,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           >
             {isAdded ? (
               <>
-                <Check className="h-4 w-4" />
+                <Check className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden xs:inline">Adicionado</span>
               </>
             ) : (
               <>
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-4 w-4" aria-hidden="true" />
                 <span>Adicionar</span>
               </>
             )}
