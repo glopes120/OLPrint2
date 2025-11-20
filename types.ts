@@ -10,6 +10,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  originalPrice?: number;
   category: Category;
   image: string;
   rating: number;
@@ -26,4 +27,4 @@ export interface ChatMessage {
   isError?: boolean;
 }
 
-export type ViewState = 'home' | 'products' | 'about';
+export type ViewState = 'home' | 'products' | 'about' | 'promotions';

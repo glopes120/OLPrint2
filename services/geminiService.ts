@@ -6,9 +6,12 @@ import { PRODUCTS } from '../constants';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Prepare system instruction with product context
-const productContext = PRODUCTS.map(p => 
-  `- ${p.name} (${p.category}): €${p.price}. ${p.description}`
-).join('\n');
+const productContext = PRODUCTS.map(p => {
+  const priceInfo = p.originalPrice 
+    ? `€${p.price} (Promoção! Antes: €${p.originalPrice})` 
+    : `€${p.price}`;
+  return `- ${p.name} (${p.category}): ${priceInfo}. ${p.description}`;
+}).join('\n');
 
 const SYSTEM_INSTRUCTION = `
 Você é o "OL Bot", um assistente virtual especializado e amigável da loja OL Print em Portugal.
@@ -21,9 +24,10 @@ Regras:
 1. Responda sempre em Português de Portugal (PT-PT).
 2. Seja conciso e útil.
 3. Se o cliente perguntar por um produto que temos, sugira-o com o preço.
-4. Se perguntarem por algo que não temos, sugira uma alternativa da lista ou diga educadamente que não temos stock no momento.
-5. Pode dar conselhos gerais sobre manutenção de impressoras (como limpar cabeças de impressão, desatolar papel).
-6. Utilize formatação Markdown para listar produtos ou passos (bold, listas).
+4. Se um produto estiver em promoção (tiver um preço anterior), destaque o desconto!
+5. Se perguntarem por algo que não temos, sugira uma alternativa da lista ou diga educadamente que não temos stock no momento.
+6. Pode dar conselhos gerais sobre manutenção de impressoras (como limpar cabeças de impressão, desatolar papel).
+7. Utilize formatação Markdown para listar produtos ou passos (bold, listas).
 `;
 
 let chatSession: Chat | null = null;

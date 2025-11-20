@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, Printer, MessageSquare, Menu, X } from 'lucide-react';
+import { ShoppingCart, Printer, MessageSquare, Menu, X, Flame } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HeaderProps {
@@ -40,9 +40,16 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex space-x-8 items-center">
             <button onClick={() => setCurrentView('home')} className={navClasses('home')}>Início</button>
             <button onClick={() => setCurrentView('products')} className={navClasses('products')}>Loja Online</button>
+            <button 
+              onClick={() => setCurrentView('promotions')} 
+              className={`flex items-center gap-1 cursor-pointer hover:text-red-600 transition-colors ${currentView === 'promotions' ? 'text-red-600 font-bold' : 'text-slate-600'}`}
+            >
+              <Flame className="h-4 w-4" />
+              Promoções
+            </button>
             <button onClick={() => setCurrentView('about')} className={navClasses('about')}>Sobre Nós</button>
           </nav>
 
@@ -93,6 +100,13 @@ export const Header: React.FC<HeaderProps> = ({
               className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 w-full text-left"
             >
               Loja Online
+            </button>
+            <button 
+              onClick={() => { setCurrentView('promotions'); setIsMobileMenuOpen(false); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 w-full text-left"
+            >
+              <Flame className="h-4 w-4" />
+              Promoções
             </button>
             <button 
               onClick={() => { setCurrentView('about'); setIsMobileMenuOpen(false); }}

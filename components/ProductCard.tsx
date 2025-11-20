@@ -16,6 +16,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     setTimeout(() => setIsAdded(false), 2000);
   };
 
+  const discountPercentage = product.originalPrice 
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    : 0;
+
   return (
     <div className="group relative bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
       <div className="aspect-[4/3] bg-slate-100 overflow-hidden relative">
@@ -24,8 +28,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           alt={product.name}
           className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold text-slate-900 shadow-sm">
-          {product.category}
+        
+        {/* Tags Container */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+          <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold text-slate-900 shadow-sm">
+            {product.category}
+          </div>
+          {product.originalPrice && (
+            <div className="bg-red-600 text-white px-2 py-1 rounded-md text-xs font-bold shadow-sm animate-pulse">
+              -{discountPercentage}%
+            </div>
+          )}
         </div>
       </div>
 
@@ -45,9 +58,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         </p>
 
         <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-          <span className="text-xl font-bold text-slate-900">
-            €{product.price.toFixed(2)}
-          </span>
+          <div className="flex flex-col">
+            {product.originalPrice && (
+              <span className="text-xs text-slate-400 line-through">
+                €{product.originalPrice.toFixed(2)}
+              </span>
+            )}
+            <span className={`text-xl font-bold ${product.originalPrice ? 'text-red-600' : 'text-slate-900'}`}>
+              €{product.price.toFixed(2)}
+            </span>
+          </div>
           
           <button
             onClick={handleAdd}

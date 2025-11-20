@@ -5,7 +5,7 @@ import { Cart } from './components/Cart';
 import { ChatAssistant } from './components/ChatAssistant';
 import { PRODUCTS } from './constants';
 import { CartItem, Product, ViewState, Category } from './types';
-import { Filter, Search, CheckCircle, TrendingUp, Shield, Truck } from 'lucide-react';
+import { Filter, Search, CheckCircle, TrendingUp, Shield, Truck, Flame, Timer } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('home');
@@ -197,6 +197,46 @@ const App: React.FC = () => {
     </div>
   );
 
+  const renderPromotions = () => {
+    const promoProducts = PRODUCTS.filter(p => p.originalPrice && p.originalPrice > p.price);
+    
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Promo Banner */}
+        <div className="bg-gradient-to-r from-red-600 to-orange-500 rounded-3xl p-8 sm:p-12 mb-12 text-white relative overflow-hidden shadow-lg">
+          <div className="relative z-10 max-w-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                <Flame className="h-6 w-6 text-yellow-300" />
+              </div>
+              <span className="font-bold tracking-wider text-red-100 uppercase text-sm">Ofertas Limitadas</span>
+            </div>
+            <h1 className="text-3xl sm:text-5xl font-bold mb-4">Descontos Explosivos em Impressão</h1>
+            <p className="text-lg text-red-100 mb-8">Aproveite os melhores preços em impressoras e consumíveis selecionados. Stock limitado!</p>
+            <div className="flex items-center gap-2 text-sm font-semibold bg-white/10 w-fit px-4 py-2 rounded-full backdrop-blur-sm">
+              <Timer className="h-4 w-4" />
+              <span>Promoções válidas até fim de stock</span>
+            </div>
+          </div>
+          <div className="absolute right-0 bottom-0 h-full w-1/2 bg-[url('https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')] bg-cover bg-center opacity-10 mix-blend-overlay mask-image-gradient"></div>
+        </div>
+
+        {/* Grid */}
+        {promoProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {promoProducts.map(product => (
+              <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-slate-500">Não existem promoções ativas de momento. Fique atento!</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderAbout = () => (
     <div className="bg-white">
       <div className="relative bg-slate-900 py-20">
@@ -254,6 +294,7 @@ const App: React.FC = () => {
       <main className="flex-grow">
         {currentView === 'home' && renderHome()}
         {currentView === 'products' && renderProducts()}
+        {currentView === 'promotions' && renderPromotions()}
         {currentView === 'about' && renderAbout()}
       </main>
 
@@ -278,6 +319,7 @@ const App: React.FC = () => {
                 <li className="hover:text-blue-600 cursor-pointer" onClick={() => setCurrentView('products')}>Impressoras</li>
                 <li className="hover:text-blue-600 cursor-pointer" onClick={() => setCurrentView('products')}>Tinteiros</li>
                 <li className="hover:text-blue-600 cursor-pointer" onClick={() => setCurrentView('products')}>Papel</li>
+                <li className="hover:text-red-600 cursor-pointer font-medium" onClick={() => setCurrentView('promotions')}>Promoções</li>
               </ul>
             </div>
 
