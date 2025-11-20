@@ -1,3 +1,4 @@
+
 export enum Category {
   PRINTERS = 'Impressoras',
   INK_TONER = 'Tinteiros & Toners',
@@ -29,3 +30,21 @@ export interface ChatMessage {
 }
 
 export type ViewState = 'home' | 'products' | 'about' | 'promotions' | 'admin' | 'design-studio' | 'profile' | 'support';
+
+export interface Order {
+  id: string;
+  date: string;
+  total: number;
+  status: 'Em Processamento' | 'Enviado' | 'Em Distribuição' | 'Entregue' | 'Cancelado';
+  items: string[];
+  action: 'cancel' | 'track' | 'invoice' | 'none';
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning';
+  timestamp: Date;
+  read: boolean;
+}

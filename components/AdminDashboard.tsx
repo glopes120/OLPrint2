@@ -13,7 +13,8 @@ import {
   Image as ImageIcon,
   DollarSign,
   TrendingUp,
-  ShoppingCart
+  ShoppingCart,
+  Filter
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -35,6 +36,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
 
   // Form State
   const [formData, setFormData] = useState<Partial<Product>>({});
@@ -70,9 +72,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsModalOpen(false);
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategoryFilter === 'Todos' || p.category === selectedCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   // Statistics
   const totalValue = products.reduce((acc, p) => acc + p.price, 0);
@@ -184,8 +188,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'overview' ? renderOverview() : (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               {/* Table Header / Filter */}
-              <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
-                <div className="relative flex-1">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative flex-1 w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input 
                     type="text" 
@@ -194,6 +198,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 pr-4 py-2 w-full border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+                <div className="relative w-full sm:w-auto">
+                   <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Filter className="h-4 w-4 text-slate-400" />
+                   </div>
+                   <select
+                      value={selectedCategoryFilter}
+                      onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                      className="pl-9 pr-8 py-2 w-full sm:w-48 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white appearance-none text-slate-700 text-sm"
+                   >
+                      <option value="Todos">Todas as Categorias</option>
+                      {Object.values(Category).map(c => (
+                         <option key={c} value={c}>{c}</option>
+                      ))}
+                   </select>
                 </div>
               </div>
 
@@ -264,6 +283,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     ))}
                   </tbody>
                 </table>
+                {filteredProducts.length === 0 && (
+                   <div className="text-center py-12 text-slate-400">
+                      <p>Nenhum produto encontrado com estes filtros.</p>
+                   </div>
+                )}
               </div>
             </div>
           )}

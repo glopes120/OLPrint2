@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Search, 
@@ -18,48 +19,34 @@ import {
   AlertCircle,
   ChevronRight,
   LayoutList,
-  HelpCircle
+  HelpCircle,
+  History
 } from 'lucide-react';
+import { Order } from '../types';
 
 interface SupportProps {
   onOpenChat: () => void;
+  orders: Order[];
 }
 
 type Tab = 'help' | 'orders';
 
-export const Support: React.FC<SupportProps> = ({ onOpenChat }) => {
+export const Support: React.FC<SupportProps> = ({ onOpenChat, orders }) => {
   const [activeTab, setActiveTab] = useState<Tab>('help');
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [searchOrderInput, setSearchOrderInput] = useState('');
 
-  // Mock Data for Orders
-  const myOrders = [
-    {
-      id: 'OL-8821-X',
-      date: '12 Out 2023',
-      total: 249.99,
-      status: 'Entregue',
-      items: ['HP LaserJet Pro M404dn'],
-      action: 'invoice'
-    },
-    {
-      id: 'OL-9942-Y',
-      date: '05 Nov 2023',
-      total: 39.90,
-      status: 'Em Distribuição',
-      items: ['Pack Tinteiros HP 305XL'],
-      action: 'track'
-    },
-    {
-      id: 'OL-1002-Z',
-      date: 'Hoje',
-      total: 139.50,
-      status: 'Em Processamento',
-      items: ['Brother HL-L2350DW', 'Papel Navigator A4'],
-      action: 'cancel'
-    }
-  ];
+  // Logic to determine what to show
+  const isSearching = searchOrderInput.length > 0;
+  
+  const filteredOrders = orders.filter(o => 
+    o.id.toLowerCase().includes(searchOrderInput.toLowerCase()) || 
+    o.items.some(i => i.toLowerCase().includes(searchOrderInput.toLowerCase()))
+  );
+
+  // If searching, show all matches. If not, show only the top 3.
+  const displayedOrders = isSearching ? filteredOrders : orders.slice(0, 3);
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,10 +77,13 @@ export const Support: React.FC<SupportProps> = ({ onOpenChat }) => {
     switch(status) {
       case 'Entregue':
         return <span className="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {status}</span>;
+      case 'Enviado':
       case 'Em Distribuição':
         return <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold flex items-center gap-1"><Truck className="h-3 w-3" /> {status}</span>;
       case 'Em Processamento':
         return <span className="px-3 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-xs font-bold flex items-center gap-1"><Clock className="h-3 w-3" /> {status}</span>;
+      case 'Cancelado':
+        return <span className="px-3 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-full text-xs font-bold">{status}</span>;
       default:
         return <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">{status}</span>;
     }
@@ -259,8 +249,14 @@ export const Support: React.FC<SupportProps> = ({ onOpenChat }) => {
              <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
                  <div>
-                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Histórico de Pedidos</h2>
-                   <p className="text-slate-500 dark:text-slate-400">Consulte o estado e detalhes das suas compras recentes.</p>
+                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                     {isSearching ? 'Resultados da Pesquisa' : 'Os Meus Pedidos'}
+                   </h2>
+                   <p className="text-slate-500 dark:text-slate-400">
+                     {isSearching 
+                        ? 'A mostrar resultados para "' + searchOrderInput + '"' 
+                        : 'Consulte o estado e detalhes das suas compras.'}
+                   </p>
                  </div>
                  <div className="relative w-full md:w-auto">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -274,10 +270,16 @@ export const Support: React.FC<SupportProps> = ({ onOpenChat }) => {
                  </div>
                </div>
 
+               {/* Recent Orders Header (Only visible when not searching) */}
+               {!isSearching && (
+                  <div className="mb-4 flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
+                     <History className="h-5 w-5" />
+                     <h3>Pedidos Recentes (Últimos 3)</h3>
+                  </div>
+               )}
+
                <div className="space-y-4">
-                 {myOrders
-                   .filter(o => o.id.toLowerCase().includes(searchOrderInput.toLowerCase()) || o.items.some(i => i.toLowerCase().includes(searchOrderInput.toLowerCase())))
-                   .map((order, idx) => (
+                 {displayedOrders.map((order, idx) => (
                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 hover:shadow-md transition-shadow">
                       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                          <div className="flex items-center gap-4">
@@ -326,7 +328,7 @@ export const Support: React.FC<SupportProps> = ({ onOpenChat }) => {
                                </button>
                             )}
                             
-                            {order.status !== 'Entregue' && (
+                            {order.status !== 'Entregue' && order.status !== 'Cancelado' && (
                                <button className="flex-1 md:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center justify-center gap-2 shadow-sm transition-colors">
                                  <MapPin className="h-4 w-4" />
                                  Rastrear
@@ -341,10 +343,23 @@ export const Support: React.FC<SupportProps> = ({ onOpenChat }) => {
                    </div>
                  ))}
                  
-                 {myOrders.length === 0 && (
+                 {displayedOrders.length === 0 && (
                     <div className="text-center py-12">
                        <Package className="h-12 w-12 mx-auto text-slate-300 mb-3" />
                        <p className="text-slate-500">Não foram encontradas encomendas.</p>
+                    </div>
+                 )}
+                 
+                 {/* View Full History Button (Only visible when not searching and there are items) */}
+                 {!isSearching && orders.length > 0 && (
+                    <div className="text-center mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                       <button 
+                         onClick={() => setSearchOrderInput(' ')} // Hack to trigger "search all" mode or redirect
+                         className="text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm flex items-center justify-center gap-1 mx-auto"
+                       >
+                         Ver Histórico Completo
+                         <ChevronRight className="h-4 w-4" />
+                       </button>
                     </div>
                  )}
                </div>

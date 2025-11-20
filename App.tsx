@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
@@ -7,8 +8,9 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { DesignStudio } from './components/DesignStudio';
 import { ProfileSettings } from './components/ProfileSettings';
 import { Support } from './components/Support';
+import { NotificationToast } from './components/NotificationToast';
 import { PRODUCTS as INITIAL_PRODUCTS } from './constants';
-import { CartItem, Product, ViewState, Category } from './types';
+import { CartItem, Product, ViewState, Category, Order, AppNotification } from './types';
 import { updateAIContext } from './services/geminiService';
 import { Filter, Search, CheckCircle, TrendingUp, Shield, Truck, Flame, Timer, Lock, User } from 'lucide-react';
 
@@ -24,6 +26,52 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Orders & Notifications State
+  const [orders, setOrders] = useState<Order[]>([
+    {
+      id: 'OL-1002-Z',
+      date: 'Hoje',
+      total: 139.50,
+      status: 'Em Processamento',
+      items: ['Brother HL-L2350DW', 'Papel Navigator A4'],
+      action: 'cancel'
+    },
+    {
+      id: 'OL-9942-Y',
+      date: '05 Nov 2023',
+      total: 39.90,
+      status: 'Em Distribuição',
+      items: ['Pack Tinteiros HP 305XL'],
+      action: 'track'
+    },
+    {
+      id: 'OL-8821-X',
+      date: '12 Out 2023',
+      total: 249.99,
+      status: 'Entregue',
+      items: ['HP LaserJet Pro M404dn'],
+      action: 'invoice'
+    },
+    {
+      id: 'OL-7520-A',
+      date: '20 Set 2023',
+      total: 15.50,
+      status: 'Entregue',
+      items: ['Papel Fotográfico Glossy'],
+      action: 'invoice'
+    },
+    {
+      id: 'OL-6201-B',
+      date: '02 Ago 2023',
+      total: 89.00,
+      status: 'Entregue',
+      items: ['Canon PIXMA TS5350i'],
+      action: 'invoice'
+    }
+  ]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [currentToast, setCurrentToast] = useState<AppNotification | null>(null);
 
   // Dark Mode State
   const [darkMode, setDarkMode] = useState(() => {
@@ -69,6 +117,43 @@ const App: React.FC = () => {
     localStorage.setItem('darkMode', darkMode.toString());
   }, [darkMode]);
 
+  // 4. Simulate Order Status Update & Notification
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Find the processing order and update it to 'Enviado'
+      const targetOrderId = 'OL-1002-Z';
+      
+      setOrders(prevOrders => {
+        // Check if already updated to avoid loops if component re-renders
+        const needsUpdate = prevOrders.some(o => o.id === targetOrderId && o.status === 'Em Processamento');
+        
+        if (needsUpdate) {
+          // Create Notification
+          const newNotification: AppNotification = {
+            id: Date.now().toString(),
+            title: 'Encomenda Enviada!',
+            message: `A sua encomenda #${targetOrderId} saiu do nosso armazém e está a caminho.`,
+            type: 'info',
+            timestamp: new Date(),
+            read: false
+          };
+
+          setNotifications(prev => [newNotification, ...prev]);
+          setCurrentToast(newNotification);
+
+          // Return updated orders
+          return prevOrders.map(o => 
+            o.id === targetOrderId ? { ...o, status: 'Enviado', action: 'track' } : o
+          );
+        }
+        return prevOrders;
+      });
+
+    }, 8000); // Trigger after 8 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const toggleDarkMode = () => setDarkMode(prev => !prev);
 
   // Cart Logic
@@ -110,6 +195,10 @@ const App: React.FC = () => {
   };
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  const markNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   // Admin Actions
   const handleAddProduct = (newProduct: Product) => {
@@ -386,15 +475,22 @@ const App: React.FC = () => {
         cartCount={cartCount} 
         toggleCart={() => setIsCartOpen(true)}
         toggleChat={() => setIsChatOpen(prev => !prev)}
+        notifications={notifications}
+        onMarkNotificationsRead={markNotificationsAsRead}
       />
 
-      <main className="flex-grow">
+      <main className="flex-grow relative">
+        <NotificationToast 
+          notification={currentToast} 
+          onClose={() => setCurrentToast(null)} 
+        />
+
         {currentView === 'home' && renderHome()}
         {currentView === 'products' && renderProducts()}
         {currentView === 'promotions' && renderPromotions()}
         {currentView === 'about' && renderAbout()}
         {currentView === 'design-studio' && <DesignStudio />}
-        {currentView === 'support' && <Support onOpenChat={() => setIsChatOpen(true)} />}
+        {currentView === 'support' && <Support onOpenChat={() => setIsChatOpen(true)} orders={orders} />}
         {currentView === 'profile' && (
           <ProfileSettings 
             darkMode={darkMode}

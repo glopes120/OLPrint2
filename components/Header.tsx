@@ -1,6 +1,7 @@
-import React from 'react';
-import { ShoppingCart, Printer, MessageSquare, Menu, X, Flame, Palette, User } from 'lucide-react';
-import { ViewState } from '../types';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { ShoppingCart, Printer, MessageSquare, Menu, X, Flame, Palette, User, Bell, Check } from 'lucide-react';
+import { ViewState, AppNotification } from '../types';
 
 interface HeaderProps {
   currentView: ViewState;
@@ -8,6 +9,8 @@ interface HeaderProps {
   cartCount: number;
   toggleCart: () => void;
   toggleChat: () => void;
+  notifications: AppNotification[];
+  onMarkNotificationsRead: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -15,12 +18,40 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentView, 
   cartCount, 
   toggleCart,
-  toggleChat
+  toggleChat,
+  notifications,
+  onMarkNotificationsRead
 }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const navClasses = (view: ViewState) => 
     `cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${currentView === view ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-300'}`;
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Close notifications on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleToggleNotifications = () => {
+    if (!isNotifOpen) {
+      // Opening
+      setIsNotifOpen(true);
+    } else {
+      // Closing
+      setIsNotifOpen(false);
+      onMarkNotificationsRead();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
@@ -61,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button 
               onClick={toggleChat}
               className="hidden md:flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -69,6 +100,59 @@ export const Header: React.FC<HeaderProps> = ({
               <MessageSquare className="h-5 w-5" />
               <span className="text-sm font-medium">Assistente</span>
             </button>
+
+            {/* Notifications Bell */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={handleToggleNotifications}
+                className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <Bell className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden origin-top-right animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-900 dark:text-white">Notificações</h3>
+                    {unreadCount > 0 && (
+                      <button onClick={onMarkNotificationsRead} className="text-xs text-blue-600 hover:underline">
+                        Marcar como lidas
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 text-sm">
+                        Não tem notificações.
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {notifications.map((notif) => (
+                          <li key={notif.id} className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${!notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                            <div className="flex gap-3">
+                              <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!notif.read ? 'bg-blue-500' : 'bg-slate-300'}`} />
+                              <div>
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">{notif.title}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{notif.message}</p>
+                                <p className="text-[10px] text-slate-400 mt-2">
+                                  {notif.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button 
               onClick={toggleCart}
