@@ -25,6 +25,7 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   isError?: boolean;
+  groundingLinks?: { title: string; uri: string; source: 'maps' | 'web' }[];
 }
 
 export type ViewState = 'home' | 'products' | 'about' | 'promotions' | 'admin' | 'design-studio' | 'profile' | 'support';

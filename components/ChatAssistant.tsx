@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Loader2, MessageSquare, ShoppingCart } from 'lucide-react';
-import { sendMessageStream, sendToolResponseStream } from '../services/geminiService';
+import { X, Send, Bot, Loader2, MessageSquare, ShoppingCart, MapPin, ExternalLink } from 'lucide-react';
+import { sendMessageStream, sendToolResponseStream, resetChat } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
+import { ChatMessage } from '../types';
 
 interface ChatAssistantProps {
   isOpen: boolean;
@@ -10,25 +11,42 @@ interface ChatAssistantProps {
   onAddToCart: (productId: string) => boolean;
 }
 
-interface Message {
-  role: 'user' | 'model';
-  text: string;
-}
-
 export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, onOpen, onAddToCart }) => {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: 'Olá! 👋 Sou o assistente virtual da OL Print. Como posso ajudar com a sua impressora hoje?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [location, setLocation] = useState<{lat: number, lng: number} | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasRequestedLocation = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    if (isOpen) scrollToBottom();
+    if (isOpen) {
+      scrollToBottom();
+      // Request location permission once when chat opens
+      if (!hasRequestedLocation.current && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setLocation(loc);
+            // If we got location, we might want to reset chat session to inject new location config
+            // But to avoid jarring UX, we just ensure next message uses it.
+            // Ideally, resetChat() if it was the very first interaction, but safe to just let sendMessageStream handle it.
+            // For strict Maps grounding, we should ensure session is created with location.
+            resetChat(); 
+          },
+          (err) => {
+            console.warn("Location access denied or error:", err);
+          }
+        );
+        hasRequestedLocation.current = true;
+      }
+    }
   }, [messages, isOpen]);
 
   const handleSend = async () => {
@@ -43,11 +61,15 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
     setMessages(prev => [...prev, { role: 'model', text: '' }]);
 
     try {
-      let result = await sendMessageStream(userMessage);
+      // Pass location if available
+      let result = await sendMessageStream(userMessage, location);
       let fullText = '';
       let functionCallData: { name: string, args: any, id: string } | null = null;
+      
+      // Temporary storage for grounding chunks in this turn
+      const collectedGroundingLinks: { title: string; uri: string; source: 'maps' | 'web' }[] = [];
 
-      // --- First Pass: User text -> Model (Text or Tool Call) ---
+      // --- First Pass: User text -> Model (Text, Tool Call, or Grounding) ---
       for await (const chunk of result) {
         const chunkText = chunk.text;
         if (chunkText) {
@@ -59,12 +81,43 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
           });
         }
 
+        // Check for Maps Grounding
+        const metadata = chunk.candidates?.[0]?.groundingMetadata;
+        if (metadata?.groundingChunks) {
+           metadata.groundingChunks.forEach((chunk: any) => {
+             if (chunk.maps) {
+               collectedGroundingLinks.push({
+                 title: chunk.maps.title || 'Localização no Mapa',
+                 uri: chunk.maps.uri,
+                 source: 'maps'
+               });
+             } else if (chunk.web) {
+                collectedGroundingLinks.push({
+                 title: chunk.web.title || 'Fonte Web',
+                 uri: chunk.web.uri,
+                 source: 'web'
+               });
+             }
+           });
+           
+           // Update message with links
+           setMessages(prev => {
+             const newMessages = [...prev];
+             const currentLinks = newMessages[newMessages.length - 1].groundingLinks || [];
+             // Deduplicate based on URI
+             const allLinks = [...currentLinks, ...collectedGroundingLinks];
+             const uniqueLinks = Array.from(new Map(allLinks.map(item => [item.uri, item])).values());
+             
+             newMessages[newMessages.length - 1].groundingLinks = uniqueLinks;
+             return newMessages;
+           });
+        }
+
         // Check for Function Calls (Tools)
         const calls = chunk.functionCalls;
         if (calls && calls.length > 0) {
           const call = calls[0];
           functionCallData = { name: call.name, args: call.args, id: call.id || '' };
-          console.log("AI wants to call tool:", functionCallData);
         }
       }
 
@@ -76,14 +129,12 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
          const success = onAddToCart(productId);
          const toolResult = success ? "Produto adicionado com sucesso." : "Produto não encontrado.";
 
-         // Show a small indicator in chat (optional, but good UX)
          setMessages(prev => {
              const newMessages = [...prev];
              newMessages[newMessages.length - 1].text += `\n\n*Adicionando produto ao carrinho...*`;
              return newMessages;
          });
 
-         // Send Tool Response back to Model to get final text confirmation
          const functionResponse = [
              {
                  name: 'addToCart',
@@ -94,15 +145,10 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
 
          result = await sendToolResponseStream(functionResponse);
 
-         // --- Second Pass: Tool Response -> Model Text Confirmation ---
          let confirmationText = '';
-         // Reset the last message or append? Let's replace the "Adicionando..." text or just append.
-         // Better: Clear the temporary loading text and stream the new response.
          
-         // Clearing the "Adicionando..." text for cleaner UI, or just let the model text flow
          setMessages(prev => {
             const newMessages = [...prev];
-            // Remove the italic status text before streaming real response
             newMessages[newMessages.length - 1].text = fullText; 
             return newMessages;
          });
@@ -113,9 +159,6 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
                  confirmationText += chunkText;
                  setMessages(prev => {
                      const newMessages = [...prev];
-                     // Append to existing text or replace? usually replace if it was a pure tool call turn
-                     // But sometimes model talks BEFORE tool. 
-                     // Simple strategy: Append the confirmation.
                      newMessages[newMessages.length - 1].text = fullText + (fullText ? '\n\n' : '') + confirmationText;
                      return newMessages;
                  });
@@ -125,7 +168,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
 
     } catch (error) {
       console.error("Error calling Gemini:", error);
-      setMessages(prev => [...prev, { role: 'model', text: 'Desculpe, tive um problema técnico. Por favor tente novamente.' }]);
+      setMessages(prev => [...prev, { role: 'model', text: 'Desculpe, tive um problema técnico. Por favor tente novamente.', isError: true }]);
     } finally {
       setIsLoading(false);
     }
@@ -162,8 +205,8 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
           <div>
             <h3 className="font-bold text-sm">Assistente OL Print</h3>
             <p className="text-xs text-blue-100 flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              Online (Gemini AI)
+              <span className={`w-2 h-2 rounded-full ${location ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`}></span>
+              {location ? 'Online (Com Localização)' : 'Online'}
             </p>
           </div>
         </div>
@@ -177,7 +220,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
               className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
@@ -201,6 +244,24 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
                 msg.text
               )}
             </div>
+
+            {/* Grounding Links Rendering */}
+            {msg.groundingLinks && msg.groundingLinks.length > 0 && (
+               <div className="mt-2 flex flex-wrap gap-2 max-w-[85%]">
+                 {msg.groundingLinks.map((link, lIdx) => (
+                   <a 
+                     key={lIdx} 
+                     href={link.uri} 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                   >
+                     {link.source === 'maps' ? <MapPin className="h-3 w-3" /> : <ExternalLink className="h-3 w-3" />}
+                     {link.title}
+                   </a>
+                 ))}
+               </div>
+            )}
           </div>
         ))}
         {isLoading && messages[messages.length - 1].role === 'user' && (
@@ -221,7 +282,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, o
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pergunte ou diga 'adicionar ao carrinho'..."
+            placeholder="Ex: Lojas perto de mim, adicionar impressora..."
             className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 border rounded-full text-sm outline-none transition-all dark:text-white"
             disabled={isLoading}
           />

@@ -1,5 +1,7 @@
 {
   "name": "OL Print Portugal",
   "description": "A loja online líder em soluções de impressão e componentes em Portugal, com assistência inteligente integrada.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

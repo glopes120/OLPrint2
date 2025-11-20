@@ -1,4 +1,4 @@
-import { GoogleGenAI, Chat, GenerateContentResponse, FunctionDeclaration, Type } from "@google/genai";
+import { GoogleGenAI, Chat, GenerateContentResponse, FunctionDeclaration, Type, Tool } from "@google/genai";
 import { Product } from '../types';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../constants';
 
@@ -37,9 +37,9 @@ const generateContext = (products: Product[]) => {
 Você é o "OL Bot", um assistente virtual especializado e amigável da loja OL Print em Portugal.
 O seu objetivo é ajudar os clientes a escolher impressoras, encontrar consumíveis (tinteiros/toners) e resolver dúvidas técnicas simples.
 
-FERRAMENTA DE CARRINHO:
-Você tem a capacidade de adicionar produtos diretamente ao carrinho do cliente se ele solicitar explicitamente (ex: "quero comprar", "adiciona ao carrinho", "vou levar a mais barata").
-Para isso, use a ferramenta 'addToCart' com o ID correto do produto listado abaixo.
+FERRAMENTAS:
+1. CARRINHO: Você tem a capacidade de adicionar produtos diretamente ao carrinho do cliente se ele solicitar explicitamente (ex: "quero comprar", "adiciona ao carrinho", "vou levar a mais barata"). Use a ferramenta 'addToCart'.
+2. MAPAS: Se o cliente perguntar por localizações (ex: "onde fica a loja", "lojas perto de mim", "centro de reparações"), use a ferramenta 'googleMaps' para encontrar e sugerir locais reais relevantes.
 
 Aqui está a lista de produtos que vendemos atualmente (atualizada em tempo real):
 ${productContext}
@@ -47,10 +47,8 @@ ${productContext}
 Regras:
 1. Responda sempre em Português de Portugal (PT-PT).
 2. Seja conciso e útil.
-3. Se o cliente perguntar por um produto que temos, sugira-o com o preço.
-4. Se um produto estiver em promoção (tiver um preço anterior), destaque o desconto!
-5. Se perguntarem por algo que não temos, sugira uma alternativa da lista ou diga educadamente que não temos stock no momento.
-6. Utilize formatação Markdown para listar produtos.
+3. Se usar o Google Maps, mencione a localização sugerida.
+4. Utilize formatação Markdown.
 `;
 };
 
@@ -62,22 +60,48 @@ export const updateAIContext = (products: Product[]) => {
   chatSession = null; // Force session reset to pick up new context
 };
 
-export const getChatSession = (): Chat => {
+export const getChatSession = (location?: { lat: number, lng: number }): Chat => {
+  // If we need to use location but session exists without it (or vice versa), ideally we reset.
+  // For this demo, we create if null.
   if (!chatSession) {
+    const tools: Tool[] = [
+      { functionDeclarations: [addToCartTool] },
+      { googleMaps: {} }
+    ];
+
+    const config: any = {
+      systemInstruction: currentSystemInstruction,
+      temperature: 0.7,
+      tools: tools,
+    };
+
+    // Add retrieval config if location is available
+    if (location) {
+      config.toolConfig = {
+        retrievalConfig: {
+          latLng: {
+            latitude: location.lat,
+            longitude: location.lng
+          }
+        }
+      };
+    }
+
     chatSession = ai.chats.create({
       model: 'gemini-2.5-flash',
-      config: {
-        systemInstruction: currentSystemInstruction,
-        temperature: 0.7,
-        tools: [{ functionDeclarations: [addToCartTool] }], // Register the tool
-      },
+      config: config,
     });
   }
   return chatSession;
 };
 
-export const sendMessageStream = async (message: string) => {
-  const chat = getChatSession();
+export const sendMessageStream = async (message: string, location?: { lat: number, lng: number }) => {
+  // If we have a location but current session might be stale, we could reset.
+  // Simple check: if location provided and we want to ensure it's used, we might need to recreate session logic
+  // but for simplicity, we rely on the component to manage the lifecycle or reset if needed.
+  
+  // If location is provided and chatSession is null, getChatSession will use it.
+  const chat = getChatSession(location);
   return chat.sendMessageStream({ message });
 };
 
